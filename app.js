@@ -2,7 +2,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 
 const authRoutes = require('./routes/authRoutes');
-const sensorRoutes = require('./routes/sensorDataRoutes');
+const sensorDataRoutes = require('./routes/sensorDataRoutes');
+const sensorRoutes = require('./routes/sensorRoutes');
 
 
 const app = express();
@@ -17,6 +18,7 @@ app.get('/', function(req, res) {
 
 // Enpoint for authentication routes
 app.use('/auth', authRoutes);
+app.use('/api', sensorRoutes);
 app.use('/api', sensorRoutes);
 
 const PORT = 3000;
