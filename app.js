@@ -2,6 +2,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 
 const authRoutes = require('./routes/authRoutes');
+const sensorRoutes = require('./routes/sensorRoutes');
+
 
 const app = express();
 app.use(bodyParser.json());
@@ -15,6 +17,7 @@ app.get('/', function(req, res) {
 
 // Enpoint for authentication routes
 app.use('/auth', authRoutes);
+app.use('/api', sensorRoutes);
 
 const PORT = 3000;
 
