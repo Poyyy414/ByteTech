@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 
 const authRoutes = require('./routes/authRoutes');
-const sensorRoutes = require('./routes/sensorRoutes');
+const sensorRoutes = require('./routes/sensorDataRoutes');
 
 
 const app = express();

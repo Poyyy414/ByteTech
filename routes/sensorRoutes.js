@@ -2,13 +2,16 @@ const express = require('express');
 const router = express.Router();
 const sensorController = require('../controllers/sensorController');
 
-// ESP32 posts sensor readings
-router.post('/sensor-data', sensorController.postSensorData);
+// Create a new sensor
+router.post('/sensors', sensorController.createSensor);
 
-// Get latest reading for a sensor
-router.get('/sensor-data/latest/:sensor_id', sensorController.getLatestSensorData);
+// Get all sensors
+router.get('/sensors', sensorController.getAllSensors);
 
-// Get all readings for a sensor
-router.get('/sensor-data/:sensor_id', sensorController.getSensorData);
+// Get a sensor by ID
+router.get('/sensors/:sensor_id', sensorController.getSensorById);
+
+// Update a sensor
+router.put('/sensors/:sensor_id', sensorController.updateSensor);
 
 module.exports = router;
