@@ -18,7 +18,7 @@ app.get('/', function(req, res) {
 
 // Enpoint for authentication routes
 app.use('/auth', authRoutes);
-app.use('/api', sensorRoutes);
+app.use('/api', sensorDataRoutes);
 app.use('/api', sensorRoutes);
 
 const PORT = 3000;
