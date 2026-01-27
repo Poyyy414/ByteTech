@@ -5,6 +5,7 @@ const authRoutes = require('./routes/authRoutes');
 const sensorDataRoutes = require('./routes/sensorDataRoutes');
 const sensorRoutes = require('./routes/sensorRoutes');
 const barangayRoutes = require('./routes/barangayRoutes');
+const establishmentRoutes = require('./routes/establishmentRoutes');
 
 
 
@@ -23,6 +24,7 @@ app.use('/auth', authRoutes);
 app.use('/api', sensorDataRoutes);
 app.use('/api', sensorRoutes);
 app.use('/api', barangayRoutes);
+app.use('/api/establishments', establishmentRoutes);
 
 const PORT = 3000;
 
