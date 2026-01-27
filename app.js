@@ -6,6 +6,7 @@ const sensorDataRoutes = require('./routes/sensorDataRoutes');
 const sensorRoutes = require('./routes/sensorRoutes');
 
 
+
 const app = express();
 app.use(bodyParser.json());
 
