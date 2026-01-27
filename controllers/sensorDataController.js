@@ -1,8 +1,6 @@
 const pool = require('../config/database');
 
-// ============================================
 // Receive sensor data from ESP32
-// ============================================
 const postSensorData = async (req, res) => {
   const {
     sensor_id,
@@ -30,7 +28,7 @@ const postSensorData = async (req, res) => {
   }
 
   try {
-    // 1️⃣ Insert sensor data
+    //  Insert sensor data
     await pool.query(
       `INSERT INTO sensor_data (
         sensor_id,
@@ -58,7 +56,7 @@ const postSensorData = async (req, res) => {
       ]
     );
 
-    // 2️⃣ Auto-generate alerts
+    // 2 Auto-generate alerts
     if (carbon_level === 'HIGH' || carbon_level === 'VERY HIGH') {
       await pool.query(
         `INSERT INTO alerts (sensor_id, type, value)
@@ -86,9 +84,8 @@ const postSensorData = async (req, res) => {
   }
 };
 
-// ============================================
+
 // Get latest sensor data by sensor_id
-// ============================================
 const getLatestSensorData = async (req, res) => {
   const { sensor_id } = req.params;
 
@@ -119,9 +116,8 @@ const getLatestSensorData = async (req, res) => {
   }
 };
 
-// ============================================
 // Get all sensor data for a sensor
-// ============================================
+
 const getSensorData = async (req, res) => {
   const { sensor_id } = req.params;
 
