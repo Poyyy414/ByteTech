@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const authRoutes = require('./routes/authRoutes');
 const sensorDataRoutes = require('./routes/sensorDataRoutes');
 const sensorRoutes = require('./routes/sensorRoutes');
+const barangayRoutes = require('./routes/barangayRoutes');
 
 
 
@@ -21,6 +22,7 @@ app.get('/', function(req, res) {
 app.use('/auth', authRoutes);
 app.use('/api', sensorDataRoutes);
 app.use('/api', sensorRoutes);
+app.use('/api', barangayRoutes);
 
 const PORT = 3000;
 
