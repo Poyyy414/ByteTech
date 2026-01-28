@@ -17,7 +17,7 @@ const { width } = Dimensions.get('window');
 const NAGA_CITY_CENTER = {
   latitude: 13.6218,
   longitude: 123.1948,
-  latitudeDelta: 0.05,
+  latitudeDelta: 0.05, 
   longitudeDelta: 0.05,
 };
 
@@ -25,6 +25,13 @@ const SafeIcon = ({ name, size = 24, color = "#000" }) => {
   const IconComponent = Icons[name];
   return IconComponent ? <IconComponent size={size} color={color} /> : <View />;
 };
+
+const TabItem = ({ active, label, name, onPress }) => (
+  <TouchableOpacity onPress={onPress} style={styles.tabItem}>
+    <SafeIcon name={name} size={22} color={active ? '#3B6E4A' : '#999'} />
+    <Text style={[styles.tabLabel, { color: active ? '#3B6E4A' : '#999' }]}>{label}</Text>
+  </TouchableOpacity>
+);
 
 const MapScreen = () => {
   const [currentTab, setCurrentTab] = useState('Map');
@@ -39,8 +46,11 @@ const MapScreen = () => {
   const fetchBarangayData = async () => {
     try {
       setLoading(true);
+      // Ensure your endpoint matches your backend (plural 'barangays' is standard)
       const response = await fetch(`${API_URL}/barangay`);
       const data = await response.json();
+      
+      // Handle array or object response
       const actualData = Array.isArray(data) ? data : (data.data || []);
       setBarangays(actualData);
     } catch (error) {
@@ -50,11 +60,13 @@ const MapScreen = () => {
     }
   };
 
-  const getCarbonColor = (level) => {
-    const val = parseFloat(level);
-    if (val > 450) return '#D64545'; // High/Danger (Red)
-    if (val > 400) return '#E8A75D'; // Moderate (Orange)
-    return '#6CAE75'; // Normal (Green)
+  // UPDATED: Now uses temperature_c
+  const getMarkerColor = (tempStr) => {
+    if (!tempStr) return '#6CAE75'; 
+    const temp = parseFloat(String(tempStr).replace('°C', ''));
+    if (temp >= 35) return '#D64545'; 
+    if (temp >= 32) return '#E8A75D'; 
+    return '#6CAE75'; 
   };
 
   const renderContent = () => {
@@ -77,23 +89,27 @@ const MapScreen = () => {
             provider={PROVIDER_GOOGLE}
             initialRegion={NAGA_CITY_CENTER}
           >
-            {barangays.map((brgy) => {
-              const lat = parseFloat(String(brgy.latitude).replace(',', '.'));
-              const lng = parseFloat(String(brgy.longitude).replace(',', '.'));
+            {barangays.map((brgy, index) => {
+              const lat = parseFloat(brgy.latitude);
+              const lng = parseFloat(brgy.longitude);
 
               if (isNaN(lat) || isNaN(lng)) return null;
 
               return (
                 <Marker 
-                  key={String(brgy.barangay_id || brgy._id)}
+                  key={index}
                   coordinate={{ latitude: lat, longitude: lng }}
                   onPress={() => setSelectedBrgy(brgy)}
+                  title={brgy.name} // Shows name on tap
                 >
-                  <View style={[styles.customMarker, { borderColor: getCarbonColor(brgy.carbon_level) }]}>
+                  <View style={[
+                    styles.customMarker, 
+                    { borderColor: getMarkerColor(brgy.temperature_c) }
+                  ]}>
                      <SafeIcon 
-                       name="Wind" 
-                       size={18} 
-                       color={getCarbonColor(brgy.carbon_level)} 
+                        name="Thermometer" 
+                        size={18} 
+                        color={getMarkerColor(brgy.temperature_c)} 
                      />
                   </View>
                 </Marker>
@@ -112,29 +128,28 @@ const MapScreen = () => {
       {currentTab === 'Map' && selectedBrgy && (
         <View style={styles.cardOverlay}>
           <View style={styles.infoCard}>
-            <Text style={styles.brgyName}>Barangay {selectedBrgy.name}</Text>
+            <Text style={styles.brgyName}>Brgy. {selectedBrgy.name}</Text>
+            <Text style={styles.cityName}>{selectedBrgy.city}</Text>
             
             <View style={styles.statsRow}>
-              {/* Temperature Section */}
+              {/* UPDATED: Displays temperature_c */}
               <View style={styles.statGroup}>
                 <SafeIcon name="Thermometer" color="#E85D5D" size={24} />
-                <Text style={styles.statValue}>{String(selectedBrgy.temp || '0').replace('°C', '')}°C</Text>
+                <Text style={styles.statValue}>{selectedBrgy.temperature_c}</Text>
               </View>
 
-              {/* Carbon Section */}
+              {/* Displays density */}
               <View style={styles.statGroup}>
-                <SafeIcon name="Wind" color="#3B6E4A" size={24} />
-                <Text style={styles.statValue}>{selectedBrgy.carbon_level || '0'} PPM</Text>
+                <SafeIcon name="Users" color="#3B82F6" size={24} />
+                <View>
+                   <Text style={styles.statValue}>{selectedBrgy.density}</Text>
+                   <Text style={styles.unitText}>Density</Text>
+                </View>
               </View>
-            </View>
-
-            <View style={styles.debugBox}>
-              <Text style={styles.debugText}>Sensor Status: Active</Text>
-              <Text style={styles.debugText}>Last Updated: Just now</Text>
             </View>
 
             <TouchableOpacity onPress={() => setSelectedBrgy(null)} style={styles.closeBtn}>
-              <Text style={{color: '#3B6E4A', fontWeight: 'bold'}}>Close</Text>
+              <Text style={{color: '#3B6E4A', fontWeight: 'bold'}}>Dismiss</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -144,36 +159,29 @@ const MapScreen = () => {
         <TabItem active={currentTab === 'Map'} label="Map" name="Map" onPress={() => setCurrentTab('Map')} />
         <TabItem active={currentTab === 'Dashboard'} label="Dash" name="LayoutDashboard" onPress={() => setCurrentTab('Dashboard')} />
         <TabItem active={currentTab === 'Reports'} label="Reports" name="ClipboardList" onPress={() => setCurrentTab('Reports')} />
-        <TabItem active={currentTab === 'Establishment'} label="Establis" name="Building2" onPress={() => setCurrentTab('Establishment')} />
+        <TabItem active={currentTab === 'Establishment'} label="Establish" name="Building2" onPress={() => setCurrentTab('Establishment')} />
       </View>
     </View>
   );
 };
-
-const TabItem = ({ active, label, name, onPress }) => (
-  <TouchableOpacity onPress={onPress} style={styles.tabItem}>
-    <SafeIcon name={name} size={22} color={active ? '#3B6E4A' : '#999'} />
-    <Text style={[styles.tabLabel, { color: active ? '#3B6E4A' : '#999' }]}>{label}</Text>
-  </TouchableOpacity>
-);
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
   map: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   cardOverlay: { position: 'absolute', bottom: 100, width: '100%', alignItems: 'center' },
-  infoCard: { width: width * 0.9, backgroundColor: 'white', borderRadius: 20, padding: 20, elevation: 8, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 },
-  brgyName: { fontSize: 20, fontWeight: 'bold', color: '#333', marginBottom: 10 },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', marginVertical: 10 },
+  infoCard: { width: width * 0.9, backgroundColor: 'white', borderRadius: 20, padding: 20, elevation: 10, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 },
+  brgyName: { fontSize: 22, fontWeight: 'bold', color: '#333' },
+  cityName: { fontSize: 13, color: '#999', marginBottom: 15 },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 10 },
   statGroup: { alignItems: 'center', flexDirection: 'row' },
-  statValue: { fontSize: 22, fontWeight: 'bold', marginLeft: 8, color: '#222' },
-  debugBox: { marginTop: 15, padding: 8, backgroundColor: '#F5F5F5', borderRadius: 10 },
-  debugText: { fontSize: 11, color: '#777' },
-  bottomTabBar: { flexDirection: 'row', height: 80, backgroundColor: 'white', borderTopWidth: 1, borderColor: '#EEE' },
+  statValue: { fontSize: 20, fontWeight: 'bold', marginLeft: 8 },
+  unitText: { fontSize: 10, color: '#999', marginLeft: 8 },
+  bottomTabBar: { flexDirection: 'row', height: 80, backgroundColor: 'white', borderTopWidth: 1, borderColor: '#EEE', paddingBottom: 10 },
   tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   tabLabel: { fontSize: 10, marginTop: 4 },
-  customMarker: { backgroundColor: 'white', padding: 8, borderRadius: 25, borderWidth: 3, elevation: 5 },
-  closeBtn: { marginTop: 15, alignSelf: 'center', padding: 5 }
+  customMarker: { backgroundColor: 'white', padding: 6, borderRadius: 20, borderWidth: 3, elevation: 5 },
+  closeBtn: { marginTop: 15, alignSelf: 'center', padding: 10 }
 });
 
 export default MapScreen;

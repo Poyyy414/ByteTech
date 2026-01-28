@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "ByteTech",
-    "slug": "ByteTech",
+    "name": "Carbon Watch",
+    "slug": "Carbon Watch",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/Final.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
+      "image": "./assets/image.png",
+      "resizeMode": "cover",
       "backgroundColor": "#ffffff"
     },
     "ios": {
