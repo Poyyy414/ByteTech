@@ -5,7 +5,7 @@ const pool = require('../config/database');
 const getAllBarangays = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT barangay_id, name, latitude, longitude, city, density, temp
+      `SELECT barangay_id, name, latitude, longitude, city, density, temperature_c
        FROM barangays
        ORDER BY barangay_id ASC`
     );
@@ -29,7 +29,7 @@ const getBarangayById = async (req, res) => {
 
   try {
     const [rows] = await pool.query(
-      `SELECT barangay_id, name, latitude, longitude, city, density, temp
+      `SELECT barangay_id, name, latitude, longitude, city, density, temperature_c
        FROM barangays
        WHERE barangay_id = ?`,
       [id]
