@@ -1,4 +1,4 @@
-const pool = require('../config/database');
+const pool = require('../config/database'); // MySQL pool
 
 // ============================================
 // Create a new sensor
@@ -6,15 +6,44 @@ const pool = require('../config/database');
 const createSensor = async (req, res) => {
   const { sensor_name, barangay_id, establishment_id, latitude, longitude } = req.body;
 
+  // Validate required fields
   if (!sensor_name || !latitude || !longitude) {
-    return res.status(400).json({ error: 'sensor_name, latitude, and longitude are required' });
+    return res.status(400).json({
+      error: 'sensor_name, latitude, and longitude are required'
+    });
+  }
+
+  // Must belong to at least a barangay or establishment
+  if (!barangay_id && !establishment_id) {
+    return res.status(400).json({
+      error: 'Sensor must belong to a barangay or an establishment'
+    });
   }
 
   try {
+    let finalBarangayId = barangay_id;
+
+    // If establishment is provided, validate it
+    if (establishment_id) {
+      const [estRows] = await pool.query(
+        'SELECT barangay_id FROM establishments WHERE establishment_id = ?',
+        [establishment_id]
+      );
+
+      if (estRows.length === 0) {
+        return res.status(400).json({ error: 'Invalid establishment_id' });
+      }
+
+      // Auto-set barangay_id from establishment if not provided
+      if (!finalBarangayId) {
+        finalBarangayId = estRows[0].barangay_id;
+      }
+    }
+
     const [result] = await pool.query(
       `INSERT INTO sensors (sensor_name, barangay_id, establishment_id, latitude, longitude)
        VALUES (?, ?, ?, ?, ?)`,
-      [sensor_name, barangay_id || null, establishment_id || null, latitude, longitude]
+      [sensor_name, finalBarangayId || null, establishment_id || null, latitude, longitude]
     );
 
     res.status(201).json({
@@ -28,16 +57,24 @@ const createSensor = async (req, res) => {
 };
 
 // ============================================
-// Get all sensors
+// Get all sensors with barangay and establishment info
 // ============================================
 const getAllSensors = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT s.sensor_id, s.sensor_name, s.barangay_id, s.establishment_id, 
-              s.latitude, s.longitude, s.installed_on, s.created_at, s.updated_at,
-              b.name AS barangay_name
+      `SELECT 
+          s.sensor_id,
+          s.sensor_name,
+          s.latitude,
+          s.longitude,
+          s.installed_on,
+          s.barangay_id,
+          b.name AS barangay_name,
+          s.establishment_id,
+          e.establishment_name
        FROM sensors s
        LEFT JOIN barangays b ON s.barangay_id = b.barangay_id
+       LEFT JOIN establishments e ON s.establishment_id = e.establishment_id
        ORDER BY s.sensor_id ASC`
     );
 
@@ -56,16 +93,24 @@ const getSensorById = async (req, res) => {
 
   try {
     const [rows] = await pool.query(
-      `SELECT s.sensor_id, s.sensor_name, s.barangay_id, s.establishment_id, 
-              s.latitude, s.longitude, s.installed_on, s.created_at, s.updated_at,
-              b.name AS barangay_name
+      `SELECT 
+          s.sensor_id,
+          s.sensor_name,
+          s.latitude,
+          s.longitude,
+          s.installed_on,
+          s.barangay_id,
+          b.name AS barangay_name,
+          s.establishment_id,
+          e.establishment_name
        FROM sensors s
        LEFT JOIN barangays b ON s.barangay_id = b.barangay_id
+       LEFT JOIN establishments e ON s.establishment_id = e.establishment_id
        WHERE s.sensor_id = ?`,
       [sensor_id]
     );
 
-    if (rows.length === 0) {
+    if (!rows.length) {
       return res.status(404).json({ error: 'Sensor not found' });
     }
 
@@ -77,22 +122,46 @@ const getSensorById = async (req, res) => {
 };
 
 // ============================================
-// Update a sensor (optional)
+// Update a sensor
 // ============================================
 const updateSensor = async (req, res) => {
   const { sensor_id } = req.params;
   const { sensor_name, barangay_id, establishment_id, latitude, longitude } = req.body;
 
+  if (!barangay_id && !establishment_id) {
+    return res.status(400).json({
+      error: 'Sensor must belong to a barangay or an establishment'
+    });
+  }
+
   try {
+    let finalBarangayId = barangay_id;
+
+    if (establishment_id) {
+      const [estRows] = await pool.query(
+        'SELECT barangay_id FROM establishments WHERE establishment_id = ?',
+        [establishment_id]
+      );
+
+      if (estRows.length === 0) {
+        return res.status(400).json({ error: 'Invalid establishment_id' });
+      }
+
+      // Auto-set barangay_id from establishment if not provided
+      if (!finalBarangayId) {
+        finalBarangayId = estRows[0].barangay_id;
+      }
+    }
+
     const [result] = await pool.query(
       `UPDATE sensors
        SET sensor_name = ?, barangay_id = ?, establishment_id = ?, latitude = ?, longitude = ?
        WHERE sensor_id = ?`,
-      [sensor_name, barangay_id || null, establishment_id || null, latitude, longitude, sensor_id]
+      [sensor_name, finalBarangayId || null, establishment_id || null, latitude, longitude, sensor_id]
     );
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Sensor not found or no changes made' });
+    if (!result.affectedRows) {
+      return res.status(404).json({ error: 'Sensor not found' });
     }
 
     res.status(200).json({ message: 'Sensor updated successfully' });
