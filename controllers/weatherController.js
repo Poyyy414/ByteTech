@@ -7,8 +7,13 @@ const pool = require('../config/database');
 const getWeeklyPrediction = async (req, res) => {
   const { barangay_id } = req.params;
 
+  // 1️⃣ Validate barangay_id
+  if (!barangay_id) {
+    return res.status(400).json({ error: 'barangay_id is required' });
+  }
+
   try {
-    // 1️⃣ Get barangay coordinates
+    // 2️⃣ Get barangay coordinates
     const [rows] = await pool.query(
       `SELECT name, latitude, longitude 
        FROM barangays 
@@ -16,13 +21,13 @@ const getWeeklyPrediction = async (req, res) => {
       [barangay_id]
     );
 
-    if (!rows.length) {
+    if (!rows || rows.length === 0) {
       return res.status(404).json({ error: 'Barangay not found' });
     }
 
     const { name, latitude, longitude } = rows[0];
 
-    // 2️⃣ Open-Meteo API (7-day forecast)
+    // 3️⃣ Open-Meteo API (7-day forecast)
     const url = `
       https://api.open-meteo.com/v1/forecast
       ?latitude=${latitude}
@@ -44,18 +49,17 @@ const getWeeklyPrediction = async (req, res) => {
       console.warn('Open-Meteo API error, using fallback:', apiError.message);
     }
 
-    // 3️⃣ Prepare forecast (fallback if daily is null)
+    // 4️⃣ Prepare forecast
     const forecast = [];
 
     if (daily) {
-      // Use real API data
       daily.time.forEach((date, i) => {
         const tempMax = daily.temperature_2m_max?.[i] ?? null;
         const tempMin = daily.temperature_2m_min?.[i] ?? null;
         const rain = daily.precipitation_probability_max?.[i] ?? null;
         const wind = daily.wind_speed_10m_max?.[i] ?? null;
 
-        let carbon = 'NORMAL';
+        let carbon = 'NORMAL'; // default enum value
         if (tempMax !== null && rain !== null && wind !== null) {
           if (tempMax >= 35 && rain < 20 && wind < 3) carbon = 'VERY HIGH';
           else if (tempMax >= 32 && rain < 40) carbon = 'HIGH';
@@ -72,7 +76,7 @@ const getWeeklyPrediction = async (req, res) => {
         });
       });
     } else {
-      // Fallback: 7-day dummy forecast
+      // Fallback 7-day forecast with safe ENUM value
       const today = new Date();
       for (let i = 0; i < 7; i++) {
         const date = new Date(today);
@@ -83,11 +87,40 @@ const getWeeklyPrediction = async (req, res) => {
           temp_min: null,
           rain_probability: null,
           wind_speed: null,
-          predicted_carbon_density: 'UNKNOWN'
+          predicted_carbon_density: 'NORMAL' // ✅ must match ENUM
         });
       }
     }
 
+    // 5️⃣ Save forecasts in weather_foreasts table
+    try {
+      for (const day of forecast) {
+        await pool.query(
+          `INSERT INTO weather_foreasts
+           (barangay_id, forecast_date, temp_max, temp_min, rain_probability, wind_speed, predicted_carbon_density)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             temp_max = VALUES(temp_max),
+             temp_min = VALUES(temp_min),
+             rain_probability = VALUES(rain_probability),
+             wind_speed = VALUES(wind_speed),
+             predicted_carbon_density = VALUES(predicted_carbon_density)`,
+          [
+            barangay_id,
+            day.date,
+            day.temp_max,
+            day.temp_min,
+            day.rain_probability,
+            day.wind_speed,
+            day.predicted_carbon_density
+          ]
+        );
+      }
+    } catch (dbError) {
+      console.warn('Failed to save forecast to DB:', dbError.message);
+    }
+
+    // 6️⃣ Return JSON response
     res.status(200).json({
       barangay_id,
       barangay_name: name,
@@ -99,7 +132,7 @@ const getWeeklyPrediction = async (req, res) => {
     console.error('Prediction error:', error);
     res.status(500).json({
       error: 'Weather prediction failed',
-      details: error.message
+      
     });
   }
 };
