@@ -96,7 +96,7 @@ const getWeeklyPrediction = async (req, res) => {
     try {
       for (const day of forecast) {
         await pool.query(
-          `INSERT INTO weather_foreasts
+          `INSERT INTO weather_forecasts
            (barangay_id, forecast_date, temp_max, temp_min, rain_probability, wind_speed, predicted_carbon_density)
            VALUES (?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE
