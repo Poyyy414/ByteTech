@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getWeeklyPrediction } = require('../controllers/weatherController');
 
-// GET weekly weather + carbon prediction
+// Weekly forecast for ONE barangay
 router.get('/weekly/:barangay_id', getWeeklyPrediction);
 
 module.exports = router;

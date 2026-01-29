@@ -10,7 +10,9 @@ const getWeeklyPrediction = async (req, res) => {
   try {
     // 1️⃣ Get barangay coordinates
     const [rows] = await pool.query(
-      `SELECT name, latitude, longitude FROM barangays WHERE barangay_id = ?`,
+      `SELECT name, latitude, longitude 
+       FROM barangays 
+       WHERE barangay_id = ?`,
       [barangay_id]
     );
 
@@ -20,39 +22,72 @@ const getWeeklyPrediction = async (req, res) => {
 
     const { name, latitude, longitude } = rows[0];
 
-    // 2️⃣ Call Open-Meteo (7-day DAILY forecast)
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=13.636789&longitude=123.200758&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FSingapore&temporal_resolution=native`;
+    // 2️⃣ Open-Meteo API (7-day forecast)
+    const url = `
+      https://api.open-meteo.com/v1/forecast
+      ?latitude=${latitude}
+      &longitude=${longitude}
+      &daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max
+      &timezone=Asia%2FSingapore
+    `.replace(/\s+/g, '');
 
-    const { data } = await axios.get(url);
-    const daily = data.daily;
+    let daily = null;
 
-    // 3️⃣ AI rule-based carbon prediction
-    const forecast = daily.time.map((date, i) => {
-      const tempMax = daily.temperature_2m_max[i];
-      const rainProb = daily.precipitation_probability_max[i];
-      const windSpeed = daily.wind_speed_10m_max[i];
-
-      let carbon_level = 'NORMAL';
-
-      if (tempMax >= 35 && rainProb < 20 && windSpeed < 3) {
-        carbon_level = 'VERY HIGH';
-      } else if (tempMax >= 32 && rainProb < 40) {
-        carbon_level = 'HIGH';
-      } else if (rainProb >= 60 || windSpeed >= 6) {
-        carbon_level = 'LOW';
+    try {
+      const { data } = await axios.get(url);
+      if (data.daily && data.daily.time) {
+        daily = data.daily;
+      } else {
+        console.warn('Open-Meteo returned no daily data, using fallback');
       }
+    } catch (apiError) {
+      console.warn('Open-Meteo API error, using fallback:', apiError.message);
+    }
 
-      return {
-        date,
-        temperature_max: tempMax,
-        temperature_min: daily.temperature_2m_min[i],
-        rain_probability: rainProb,
-        wind_speed: windSpeed,
-        predicted_carbon_level: carbon_level
-      };
-    });
+    // 3️⃣ Prepare forecast (fallback if daily is null)
+    const forecast = [];
 
-    // 4️⃣ Response
+    if (daily) {
+      // Use real API data
+      daily.time.forEach((date, i) => {
+        const tempMax = daily.temperature_2m_max?.[i] ?? null;
+        const tempMin = daily.temperature_2m_min?.[i] ?? null;
+        const rain = daily.precipitation_probability_max?.[i] ?? null;
+        const wind = daily.wind_speed_10m_max?.[i] ?? null;
+
+        let carbon = 'NORMAL';
+        if (tempMax !== null && rain !== null && wind !== null) {
+          if (tempMax >= 35 && rain < 20 && wind < 3) carbon = 'VERY HIGH';
+          else if (tempMax >= 32 && rain < 40) carbon = 'HIGH';
+          else if (rain >= 60 || wind >= 6) carbon = 'LOW';
+        }
+
+        forecast.push({
+          date,
+          temp_max: tempMax,
+          temp_min: tempMin,
+          rain_probability: rain,
+          wind_speed: wind,
+          predicted_carbon_density: carbon
+        });
+      });
+    } else {
+      // Fallback: 7-day dummy forecast
+      const today = new Date();
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        forecast.push({
+          date: date.toISOString().split('T')[0],
+          temp_max: null,
+          temp_min: null,
+          rain_probability: null,
+          wind_speed: null,
+          predicted_carbon_density: 'UNKNOWN'
+        });
+      }
+    }
+
     res.status(200).json({
       barangay_id,
       barangay_name: name,
