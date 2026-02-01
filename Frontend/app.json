@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "",
+    "slug": "",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/Final.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/image.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.ByteTech"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
