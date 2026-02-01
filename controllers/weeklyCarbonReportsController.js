@@ -116,7 +116,7 @@ const getCarbonReportWeeks = async (req, res) => {
       FROM weekly_carbon_reports
       ORDER BY week_start DESC
     `);
-
+      
     res.status(200).json(rows);
   } catch (error) {
     res.status(500).json({
